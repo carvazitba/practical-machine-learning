@@ -1,0 +1,56 @@
+---
+title: "Exam"
+author: "Carlos"
+date: "2024-11-17"
+output: html_document
+---
+
+`# Definir las rutas de los archivos
+train_file <- "pml-training.csv"
+test_file <- "pml-testing.csv"
+
+# Cargar los datos desde los archivos locales
+training_data <- read.csv(train_file, na.strings = c("NA", ""))
+testing_data <- read.csv(test_file, na.strings = c("NA", ""))
+
+# Preprocesamiento de datos (limpieza y selección de variables)
+training_data <- training_data %>%
+  select(-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window)) %>%
+  select_if(~ sum(is.na(.)) == 0)
+
+# Convertir la variable 'classe' en factor
+training_data$classe <- as.factor(training_data$classe)
+
+# Dividir en conjuntos de entrenamiento y validación
+set.seed(1234)
+inTrain <- createDataPartition(training_data$classe, p = 0.7, list = FALSE)
+train_set <- training_data[inTrain, ]
+validation_set <- training_data[-inTrain, ]
+
+# Entrenar el modelo Random Forest
+set.seed(1234)
+model_rf <- randomForest(classe ~ ., data = train_set)
+print(model_rf)
+
+# Realizar predicciones en el conjunto de validación
+validation_predictions <- predict(model_rf, validation_set)
+
+# Matriz de confusión y precisión
+confusion_matrix <- confusionMatrix(validation_predictions, validation_set$classe)
+print(confusion_matrix)
+
+accuracy <- confusion_matrix$overall['Accuracy']
+cat("Precisión en el conjunto de validación:", accuracy, "\n")
+
+# Realizar predicciones en el conjunto de prueba
+predictions <- predict(model_rf, testing_data)
+
+# Crear un data frame con los resultados
+results <- data.frame(Case = 1:length(predictions), Prediction = predictions)
+
+# Mostrar las predicciones
+print(results)
+
+# Guardar las predicciones en un archivo CSV
+write.csv(results, "predictions.csv", row.names = FALSE)
+
